@@ -130,6 +130,20 @@ node "$OLDPWD/scripts/login.mjs" --poll                     # 扫码后轮询（
 
 端口可用 `BILI_WHALE_PANEL_PORT` 改。
 
+## 梗库
+
+`memes/default.json`（46 条：31 通用 + 8 技术向 + 7 私房），`scripts/memes.mjs` 负责查：
+
+```bash
+node scripts/memes.mjs scan "<弹幕/热评/字幕文本>"   # 找出可接的梗
+node scripts/memes.mjs lookup 绷不住                  # 精确查一条
+node scripts/memes.mjs list                           # 看词库
+```
+
+规矩（照社区踩过的坑定的）：**只收两字以上、只做字面匹配、一条评论最多接 1 个、没命中就不接**。
+单字词条（典、急、乐）一律不收——它们做包含匹配会把「经典老图」「别着急」误接成玩笑，
+**误接梗比接不上尴尬得多**。完整理由见 [docs/human-voice.md](docs/human-voice.md) 的「接梗」一节。
+
 ## 已知限制
 
 - **`vision_analyze` 可能不走本地视觉**。本仓库不绑定视觉模型；如果你像我们一样把
