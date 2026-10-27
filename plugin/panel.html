@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>养鱼面板</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#171a21; --card2:#1d2129; --fg:#e8eaf0; --muted:#8b93a7;
+    --acc:#ff7a59; --acc2:#4ec9b0; --line:#262b36; --warn:#f2c14e; --bad:#f0616d;
+    --radius:14px; --font:-apple-system,"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme: light){
+    :root{--bg:#f5f6fa;--card:#fff;--card2:#f0f2f8;--fg:#1b1f2a;--muted:#5b6478;--line:#e3e6ef;
+          --acc:#e8562f;--acc2:#0f9d84;}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;line-height:1.6}
+  .wrap{max-width:900px;margin:0 auto;padding:20px 18px 60px}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .fish{font-size:26px}
+  h1{font-size:19px;margin:0;font-weight:700;letter-spacing:.5px}
+  .sub{color:var(--muted);font-size:12.5px;margin:2px 0 18px}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+  .pill{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:7px 13px;font-size:12.5px;display:flex;align-items:center;gap:7px}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+  .dot.ok{background:var(--acc2)} .dot.bad{background:var(--bad)} .dot.warn{background:var(--warn)}
+  .tabs{display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--line);padding-bottom:0}
+  .tab{padding:9px 14px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;font-size:13.5px}
+  .tab.on{color:var(--fg);border-bottom-color:var(--acc);font-weight:600}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:14px}
+  .card h2{font-size:13px;margin:0 0 14px;color:var(--muted);font-weight:600;letter-spacing:.6px;text-transform:uppercase}
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  @media (max-width:640px){.grid{grid-template-columns:1fr}}
+  label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px}
+  input,textarea,select{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:9px;
+      padding:9px 11px;color:var(--fg);font-family:inherit;font-size:13.5px;outline:none}
+  input:focus,textarea:focus{border-color:var(--acc)}
+  input[readonly]{opacity:.6;cursor:not-allowed}
+  .row{display:flex;gap:8px;align-items:center}
+  button{background:var(--acc);color:#fff;border:0;border-radius:9px;padding:9px 16px;font-size:13.5px;
+      cursor:pointer;font-family:inherit;font-weight:600}
+  button.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+  button:disabled{opacity:.5;cursor:default}
+  .hint{color:var(--muted);font-size:12px;margin-top:6px}
+  pre{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:12px;overflow:auto;
+      font-size:12.5px;white-space:pre-wrap;word-break:break-word;max-height:360px;margin:0}
+  .toast{position:fixed;right:18px;bottom:18px;background:var(--card);border:1px solid var(--line);
+      border-radius:10px;padding:10px 14px;font-size:13px;opacity:0;transition:.2s;pointer-events:none}
+  .toast.on{opacity:1}
+  .qr{display:none;margin-top:12px;text-align:center}
+  .qr img{width:220px;height:220px;background:#fff;border-radius:12px;padding:8px}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:640px){.split{grid-template-columns:1fr}}
+  .kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px}
+  .kv:last-child{border:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><span class="fish">🐟</span>
+    <div><h1>养鱼 · <span id="pname"></span></h1></div>
+  </header>
+  <div class="sub">B 站小号在替你看视频 · 配置写回 <code id="cfgpath">bili-whale.config.json</code></div>
+
+  <div class="bar">
+    <div class="pill"><span class="dot" id="dot-auth"></span><span id="txt-auth">凭据检查中…</span></div>
+    <div class="pill"><span class="dot" id="dot-night"></span><span id="txt-night">生物钟…</span></div>
+    <div class="pill"><span class="dot ok"></span><span id="txt-quota">配额…</span></div>
+    <div class="pill"><button class="ghost" style="padding:4px 10px;font-size:12px" onclick="load()">刷新</button></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab on" data-tab="id">身份</div>
+    <div class="tab" data-tab="sched">作息与限额</div>
+    <div class="tab" data-tab="diary">日记</div>
+  </div>
+
+  <!-- 身份 -->
+  <section id="tab-id">
+    <div class="card">
+      <h2>她是条什么鱼</h2>
+      <div class="grid">
+        <div><label>角色名</label><input id="persona-name" placeholder="给她起个名字"></div>
+        <div><label>自称</label><input id="persona-claim" placeholder="我"></div>
+        <div><label>怎么称呼你</label><input id="persona-owner" placeholder="你的昵称"></div>
+        <div><label>日记标题</label><input id="persona-diartitle" placeholder="今日摘要"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>主人（@ 谁）</h2>
+      <div class="grid">
+        <div><label>主人 mid</label><input id="owner-mid" placeholder="你的 B 站 mid（space.bilibili.com/ 后面那串数字）"></div>
+        <div><label>主人昵称（正文里 @ 的名字）</label><input id="owner-name" placeholder="你的 B 站昵称"></div>
+      </div>
+      <div class="hint">mid 在你自己空间地址栏里：space.bilibili.com/<b>这串数字</b></div>
+    </div>
+
+    <div class="card">
+      <h2>她自己的号</h2>
+      <div class="split">
+        <div class="kv"><span>昵称</span><b id="self-name">—</b></div>
+        <div class="kv"><span>mid</span><b id="self-mid">—</b></div>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button class="ghost" onclick="login()">重新扫码登录</button>
+        <span class="hint" style="margin:0">扫的是<b>小号</b>，别扫主号</span>
+      </div>
+      <div class="qr" id="qrbox"><img id="qrimg" alt="登录二维码"><div class="hint" id="qrstatus">用手机 B 站 App 扫</div></div>
+    </div>
+
+    <div class="card">
+      <h2>喜好</h2>
+      <div><label>爱看（逗号分隔）</label><textarea id="pref-like" rows="2"></textarea></div>
+      <div style="margin-top:10px"><label>不爱看（逗号分隔）</label><textarea id="pref-dislike" rows="2"></textarea></div>
+    </div>
+
+    <div class="row"><button onclick="saveAll()">保存身份与喜好</button></div>
+  </section>
+
+  <!-- 作息 -->
+  <section id="tab-sched" style="display:none">
+    <div class="card">
+      <h2>作息窗口</h2>
+      <div class="grid">
+        <div><label>开始</label><input id="night-start" placeholder="20:00"></div>
+        <div><label>结束</label><input id="night-end" placeholder="24:00"></div>
+        <div><label>每窗口醒几次</label><input id="night-wakes" type="number" min="1" max="3"></div>
+        <div><label>今天不想看的概率（0–1）</label><input id="night-skip" type="number" step="0.05" min="0" max="1"></div>
+        <div><label>一次最多扫几条候选</label><input id="night-maxvideos" type="number" min="1" max="20"></div>
+        <div><label>最多间隔（分钟）</label><input id="night-mingap" type="number" min="1"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>克制</h2>
+      <div class="grid">
+        <div><label>每天最多 @ 你几次</label><input id="quota-share" type="number" min="0" max="10"></div>
+        <div><label>评分线（不到就不发）</label><input id="share-minscore" type="number" min="1" max="20"></div>
+        <div><label>沉默几天开始降额</label><input id="share-silent" type="number" min="1"></div>
+        <div><label>分享通道</label><select id="share-via"><option value="comment">评论 @</option><option value="dynamic">动态 @</option></select></div>
+      </div>
+      <div class="hint">这些只是「设置」；真正的硬闸在代码里（分享 ≤3/天、同视频 7 天一次、撞风控即停）。</div>
+    </div>
+
+    <div class="card">
+      <h2>今晚的状态</h2>
+      <pre id="night-raw">—</pre>
+    </div>
+
+    <div class="card">
+      <h2>今日配额</h2>
+      <pre id="quota-raw">—</pre>
+    </div>
+
+    <div class="row"><button onclick="saveSched()">保存作息与限额</button></div>
+  </section>
+
+  <!-- 日记 -->
+  <section id="tab-diary" style="display:none">
+    <div class="card">
+      <h2>她写给你的那本</h2>
+      <pre id="diary-text">（还没写）</pre>
+    </div>
+    <div class="card">
+      <h2>最近事件</h2>
+      <pre id="diary-events">（还没有事件）</pre>
+    </div>
+    <div class="row"><button class="ghost" onclick="load()">重新读取</button></div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+let state = {};
+
+function toast(msg) {
+  const t = $("#toast");
+  t.textContent = msg; t.classList.add("on");
+  clearTimeout(tm); var tm = setTimeout(() => t.classList.remove("on"), 2200);
+}
+
+function setDot(id, cls) { $("#" + id).className = "dot " + cls; }
+
+function fill(cfg) {
+  const p = cfg.persona || {}, o = cfg.owner || {}, n = cfg.night || {},
+        q = cfg.quota || {}, s = cfg.share || {}, pref = cfg.preferences || {};
+  $("#pname").textContent = p.name || "";
+  $("#persona-name").value = p.name || "";
+  $("#persona-claim").value = p.selfClaim || "";
+  $("#persona-owner").value = p.ownerTitle || "";
+  $("#persona-diartitle").value = p.diaryTitle || "";
+  $("#owner-mid").value = o.mid || "";
+  $("#owner-name").value = o.name || "";
+  $("#pref-like").value = (pref.like || []).join("、");
+  $("#pref-dislike").value = (pref.dislike || []).join("、");
+
+  const w = (n.windows && n.windows[0]) || {};
+  $("#night-start").value = w.start || "";
+  $("#night-end").value = w.end || "";
+  $("#night-wakes").value = w.wakes ?? "";
+  $("#night-skip").value = n.skipChance ?? "";
+  $("#night-maxvideos").value = n.maxVideos ?? "";
+  $("#night-mingap").value = n.minGapMin ?? "";
+  $("#quota-share").value = q.shareDaily ?? "";
+  $("#share-minscore").value = s.minScore ?? "";
+  $("#share-silent").value = s.silentAfterDays ?? "";
+  $("#share-via").value = s.via || "";
+}
+
+function render(st) {
+  state = st;
+  fill(st.config || {});
+  $("#cfgpath").textContent = (st.paths && st.paths.config) || "bili-whale.config.json";
+
+  const a = st.account || {};
+  if (a.valid) { setDot("dot-auth", "ok"); $("#txt-auth").textContent = "已登录 · " + (a.name || ""); }
+  else { setDot("dot-auth", "bad"); $("#txt-auth").textContent = "凭据无效"; }
+  $("#self-name").textContent = a.name || "—";
+  $("#self-mid").textContent = a.mid || "—";
+
+  const night = st.night || {}, nst = night.state || {};
+  const fired = nst.fired, act = nst.action;
+  if (act === "skip" && !fired) { setDot("dot-night", "warn"); $("#txt-night").textContent = "今天不想看"; }
+  else if (fired) { setDot("dot-night", "ok"); $("#txt-night").textContent = "今天已醒过"; }
+  else { setDot("dot-night", "ok"); $("#txt-night").textContent = "下次 " + (nst.atText || "待定"); }
+  $("#night-raw").textContent = JSON.stringify(night, null, 2).slice(0, 3000);
+
+  const q = (st.quota || "").split("\n")[0] || "—";
+  $("#txt-quota").textContent = q.replace("今日对外发言:", "").trim().slice(0, 40);
+  $("#quota-raw").textContent = st.quota || "—";
+
+  const d = st.diary || {};
+  $("#diary-text").textContent = d.narrative || "（还没写）";
+  $("#diary-events").textContent = (d.events || []).map(e => JSON.stringify(e)).join("\n") || "（还没有事件）";
+}
+
+async function load() {
+  try {
+    const r = await fetch("/api/state");
+    render(await r.json());
+  } catch (e) { toast("读取失败：" + e.message); }
+}
+
+async function post(url, body) {
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+  return await r.json();
+}
+
+async function saveAll() {
+  const patch = {
+    persona: {
+      name: $("#persona-name").value.trim(),
+      selfClaim: $("#persona-claim").value.trim(),
+      ownerTitle: $("#persona-owner").value.trim(),
+      diaryTitle: $("#persona-diartitle").value.trim(),
+    },
+    owner: { mid: $("#owner-mid").value.trim(), name: $("#owner-name").value.trim() },
+    preferences: {
+      like: $("#pref-like").value.split(/[、,，]/).map(s => s.trim()).filter(Boolean),
+      dislike: $("#pref-dislike").value.split(/[、,，]/).map(s => s.trim()).filter(Boolean),
+    },
+  };
+  const r = await post("/api/config", patch);
+  if (r.ok) { toast("已保存 ✓"); render(Object.assign({}, state, { config: r.config })); }
+  else toast("保存失败：" + (r.error || ""));
+}
+
+async function saveSched() {
+  const patch = {
+    night: {
+      windows: [{ start: $("#night-start").value.trim(), end: $("#night-end").value.trim(), wakes: +$("#night-wakes").value || 1 }],
+      skipChance: +$("#night-skip").value,
+      maxVideos: +$("#night-maxvideos").value,
+      minGapMin: +$("#night-mingap").value,
+    },
+    quota: { shareDaily: +$("#quota-share").value },
+    share: { minScore: +$("#share-minscore").value, silentAfterDays: +$("#share-silent").value, via: $("#share-via").value },
+  };
+  const r = await post("/api/config", patch);
+  if (r.ok) toast("作息已保存 ✓"); else toast("保存失败");
+}
+
+let pollTimer = null;
+async function login() {
+  $("#qrbox").style.display = "block";
+  $("#qrstatus").textContent = "生成中…";
+  const r = await post("/api/login", {});
+  if (!r.ok) { $("#qrstatus").textContent = "生成失败：" + (r.error || ""); return; }
+  $("#qrimg").src = r.image;
+  $("#qrstatus").textContent = "用手机 B 站 App 扫（3 分钟内有效）";
+  clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    const s = await fetch("/api/login/status").then(x => x.json());
+    const raw = s.raw || "";
+    if (raw.includes("success") || raw.includes("ACCOUNT")) {
+      clearInterval(pollTimer); $("#qrstatus").textContent = "登录成功 ✓"; toast("登录成功"); load();
+    } else if (raw.includes("scanned")) { $("#qrstatus").textContent = "已扫描，请在手机上确认"; }
+    else if (raw.includes("expired")) { clearInterval(pollTimer); $("#qrstatus").textContent = "二维码过期，请重新点「重新扫码登录」"; }
+  }, 2500);
+}
+
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.remove("on"));
+  t.classList.add("on");
+  ["id", "sched", "diary"].forEach(k => $("#tab-" + k).style.display = (k === t.dataset.tab ? "block" : "none"));
+});
+
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+# NOTICE — 上游与来源
+
+本仓库（hermes-bili-whale）**不包含**下列项目的源代码。它只提供适配 Hermes Agent 的一层胶水，
+运行前需要用户自行从上游获取 `tools/`。此处记录来源、许可与我们所做的对应改动，以便追溯。
+
+---
+
+## 1. Alterssss/dsh-bili-whale
+
+- 仓库：https://github.com/Alterssss/dsh-bili-whale
+- 作者：Alterssss
+- 许可：MIT（仓库 `package.json` 声明；本仓库未复制其源码）
+- 被本仓库依赖的部分：`tools/` 目录（`bili.mjs` 与 29 条命令）、`bili-whale.config.json` 的配置结构、
+  `night`（生物钟）/ `quota`（限额）/ `diary`（日记）/ `traffic`（请求保护）的行为语义。
+
+本仓库对它的**调用**方式（未修改其代码）：
+
+- 以子进程方式执行 `node tools/bili.mjs <cmd>`，统一注入 `DSH_HOME`（指向项目内 `state/`）；
+- 39 条原生命令按语义收成 9 个 Hermes 工具（`bili_doctor` / `bili_verify` / `bili_read` /
+  `bili_debrief` / `bili_lookup` / `bili_state` / `bili_listen` / `bili_write` / `bili_panel`）；
+- 写操作（评论 / 私信 / 动态 / 弹幕 / 收藏 / 待审回复）一律先补 `--dry`，只有显式 `go=true` 才 `--go`。
+
+## 2. icyaaaww/dsh-bili-vision
+
+- 仓库：https://github.com/icyaaaww/dsh-bili-vision
+- 作者：icyaaaww
+- 许可：MIT（`package.json` 声明；本仓库未复制其源码）
+- 与本仓库的关系：**可选**。若想用「带时间戳证据包 + 覆盖率报告」的视频理解，可另行获取其 `bv.py`。
+  本仓库的 `scripts/` 里没有它的任何代码。
+
+## 3. DeepSeek Harness (DSH)
+
+- 仓库：https://github.com/deepseek-ai/deepseek-harness
+- 上游插件是按 DSH 的 Cordis 插件模型写的；本仓库把这些能力重新映射到 Hermes 的插件模型
+  （`plugin.yaml` + `register(ctx)` + `ctx.register_tool`），**不是移植代码，是重写胶水**。
+
+## 4. Hermes Agent
+
+- 文档：https://hermes-agent.nousresearch.com/docs
+- 本仓库的侧栏入口用的是 Hermes 桌面端的**运行时插件**机制
+  （`$HERMES_HOME/desktop-plugins/<name>/plugin.js`，贡献 `sidebar.nav` 与 `routes`），
+  这是官方支持的口子，不是 DOM 注入。
+
+---
+
+## 本仓库自己写的部分
+
+| 文件 | 说明 |
+|---|---|
+| `plugin/__init__.py` | 9 个 Hermes 工具的注册与命令分派（子进程封装） |
+| `plugin/plugin.yaml` | 插件清单 |
+| `plugin/panel_server.py` | 只绑回环的面板小服务（标准库，白名单，不回传凭据） |
+| `plugin/panel.html` | 单文件面板（身份/作息/限额/日记/扫码） |
+| `desktop-plugin/plugin.js` | Hermes 桌面运行时插件：侧栏一行 + 整页 |
+| `scripts/login.mjs` | 扫码登录两段式 CLI（复用上游 `lib/auth.js` 的协议实现） |
+| `scripts/ensure-ollama.sh` | 本地视觉后端的幂等拉起脚本 |
+| `scripts/night-watch.sh` | cron monitor 用的生物钟判定（输出确定性 `SLEEP` / `WAKE`） |
+
+`scripts/login.mjs` 通过相对路径 `./lib/auth.js`、`./lib/credentials.js` 使用上游附带的
+登录协议实现，因此需要先完成 README 中「取上游 tools + lib」这一步。
+
+---
+
+若你是上述项目的作者，认为本仓库的引用方式不妥，请开 issue，我们会立即调整或下线相应内容。

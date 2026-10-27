@@ -1,0 +1,16 @@
+name: bili_whale
+version: 0.1.0
+description: "B 站养鱼（dsh-bili-whale 的 tools/ 在 Hermes 里的工具化封装）。38 条原生命令收成 8 个工具：诊断、复核、读内容、看懂视频、查人查赞、日记/生物钟/限额、监听、写操作（写操作默认干跑，必须显式 go=true 才真发）。所有命令转发给 桌面/hermes/bili-whale/tools/bili.mjs，凭据只在 ~/.bili-ai/credentials.json。"
+author: PC's Hermes Agent
+kind: standalone
+platforms:
+  - windows
+provides_tools:
+  - bili_doctor
+  - bili_verify
+  - bili_read
+  - bili_debrief
+  - bili_lookup
+  - bili_state
+  - bili_listen
+  - bili_write
